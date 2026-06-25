@@ -12,7 +12,7 @@ Public Class LoginForm
 
     Public Property AuthenticatedUser As UserRecord
 
-    Public Sub New(database As DatabaseService, Optional titleText As String = "Setter Login", Optional defaultUsername As String = "setter")
+    Public Sub New(database As DatabaseService, Optional titleText As String = "Setter Login", Optional defaultUsername As String = "setter", Optional submitButtonText As String = "Login")
         _database = database
 
         Text = titleText
@@ -32,7 +32,7 @@ Public Class LoginForm
 
         _statusLabel = New Label With {.Location = New Point(24, 98), .Size = New Size(296, 24), .ForeColor = Color.DarkRed}
 
-        Dim loginButton = New Button With {.Text = "Login", .Location = New Point(164, 130), .Width = 76}
+        Dim loginButton = New Button With {.Text = submitButtonText, .Location = New Point(164, 130), .Width = 76}
         Dim cancelButton = New Button With {.Text = "Cancel", .Location = New Point(244, 130), .Width = 76, .DialogResult = DialogResult.Cancel}
 
         AddHandler loginButton.Click, AddressOf LoginButton_Click

@@ -79,19 +79,17 @@ Public Class MainForm
         _serialBox = New TextBox With {.Location = New Point(20, 276), .Width = 260, .Font = New Font("Segoe UI", 18.0F, FontStyle.Regular, GraphicsUnit.Point), .CharacterCasing = CharacterCasing.Upper}
         Dim markButton = New Button With {.Text = "MARK", .Location = New Point(292, 274), .Size = New Size(88, 44)}
         _statusLabel = New Label With {.Location = New Point(20, 350), .Size = New Size(360, 80), .ForeColor = Color.DarkGreen}
-        _loggedInLabel = New Label With {.Location = New Point(20, 508), .Size = New Size(126, 24)}
-        Dim exitButton = New Button With {.Text = "Exit", .Location = New Point(154, 502), .Size = New Size(86, 34)}
+        _loggedInLabel = New Label With {.Location = New Point(20, 508), .Size = New Size(220, 24)}
         Dim setterLoginButton = New Button With {.Text = "Setter Login", .Location = New Point(252, 502), .Size = New Size(128, 34)}
 
         AddHandler markButton.Click, AddressOf MarkButton_Click
-        AddHandler exitButton.Click, Sub() Close()
         AddHandler setterLoginButton.Click, AddressOf SetterLoginButton_Click
         AddHandler _serialBox.KeyDown, AddressOf SerialBox_KeyDown
         AddHandler _serialBox.TextChanged, AddressOf OperatorInput_TextChanged
 
         operatorPanel.Controls.AddRange({
             header, currentPartText, _partLabel, vendorText, _vendorLabel, previewText, _qrPreviewLabel,
-            serialLabel, _serialBox, markButton, _statusLabel, _loggedInLabel, exitButton, setterLoginButton
+            serialLabel, _serialBox, markButton, _statusLabel, _loggedInLabel, setterLoginButton
         })
 
         _setterPanel = New Panel With {
@@ -619,7 +617,7 @@ Public Class MainForm
         End If
 
         Dim defaultUsername = If(_currentUser.Role = UserRole.Setter OrElse _currentUser.Role = UserRole.Admin, _currentUser.Username, "setter")
-        Using login = New LoginForm(_database, "Confirm Exit", defaultUsername)
+        Using login = New LoginForm(_database, "Confirm Exit", defaultUsername, "Exit")
             If login.ShowDialog(Me) = DialogResult.OK Then
                 _exitAuthorized = True
                 Return
