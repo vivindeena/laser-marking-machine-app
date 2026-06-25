@@ -12,18 +12,20 @@ Public Class LoginForm
 
     Public Property AuthenticatedUser As UserRecord
 
-    Public Sub New(database As DatabaseService)
+    Public Sub New(database As DatabaseService, Optional titleText As String = "Setter Login", Optional defaultUsername As String = "setter")
         _database = database
 
-        Text = "Setter Login"
+        Text = titleText
         StartPosition = FormStartPosition.CenterParent
         FormBorderStyle = FormBorderStyle.FixedDialog
         MinimizeBox = False
         MaximizeBox = False
+        ShowInTaskbar = False
+        TopMost = True
         ClientSize = New Size(360, 180)
 
         Dim usernameLabel = New Label With {.Text = "Username", .Location = New Point(24, 24), .AutoSize = True}
-        _usernameBox = New TextBox With {.Location = New Point(120, 20), .Width = 200, .Text = "setter"}
+        _usernameBox = New TextBox With {.Location = New Point(120, 20), .Width = 200, .Text = defaultUsername}
 
         Dim passwordLabel = New Label With {.Text = "Password", .Location = New Point(24, 62), .AutoSize = True}
         _passwordBox = New TextBox With {.Location = New Point(120, 58), .Width = 200, .UseSystemPasswordChar = True}
@@ -40,6 +42,13 @@ Public Class LoginForm
         Controls.AddRange({usernameLabel, _usernameBox, passwordLabel, _passwordBox, _statusLabel, loginButton, cancelButton})
     End Sub
 
+    Protected Overrides Sub OnShown(e As EventArgs)
+        MyBase.OnShown(e)
+        BringToFront()
+        Activate()
+        _passwordBox.Focus()
+    End Sub
+
     Private Sub LoginButton_Click(sender As Object, e As EventArgs)
         Dim user = _database.FindUser(_usernameBox.Text.Trim())
         If user Is Nothing OrElse Not PasswordHasher.Verify(_passwordBox.Text, user.PasswordHash) Then
@@ -50,7 +59,7 @@ Public Class LoginForm
         End If
 
         If user.Role = UserRole.OperatorUser Then
-            _statusLabel.Text = "Operator accounts cannot open setter settings."
+            _statusLabel.Text = "Setter or admin access is required."
             Return
         End If
 

@@ -382,7 +382,8 @@ VALUES ('ABC123', 'V001', 'P01', 'C123', 'A', '{VendorCode}|{PartNumber}|{Serial
         SaveSettingIfMissing(connection, "QrOutputPath", "C:\Laser\QRDATA.TXT")
         SaveSettingIfMissing(connection, "ActiveTemplateDirectory", "C:\Laser\ActiveTemplate")
         SaveSettingIfMissing(connection, "AutoLogoutMinutes", "2")
-        SaveSettingIfMissing(connection, "SerialRegex", "^\d{6}$")
+        SaveSettingIfMissing(connection, "SerialRegex", "^\d{2}-[A-Z]\d-\d{4}$")
+        UpdateSettingValue(connection, "SerialRegex", "^\d{6}$", "^\d{2}-[A-Z]\d-\d{4}$")
         SaveSettingIfMissing(connection, "ExternalCommand", "")
     End Sub
 
@@ -406,6 +407,20 @@ VALUES ($key, $value)
 ON CONFLICT(Key) DO NOTHING;"
             command.Parameters.AddWithValue("$key", key)
             command.Parameters.AddWithValue("$value", value)
+            command.ExecuteNonQuery()
+        End Using
+    End Sub
+
+    Private Shared Sub UpdateSettingValue(connection As SqliteConnection, key As String, oldValue As String, newValue As String)
+        Using command = connection.CreateCommand()
+            command.CommandText = "
+UPDATE Settings
+SET Value = $newValue
+WHERE Key = $key
+  AND Value = $oldValue;"
+            command.Parameters.AddWithValue("$key", key)
+            command.Parameters.AddWithValue("$oldValue", oldValue)
+            command.Parameters.AddWithValue("$newValue", newValue)
             command.ExecuteNonQuery()
         End Using
     End Sub
