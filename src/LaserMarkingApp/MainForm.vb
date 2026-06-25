@@ -23,8 +23,10 @@ Public Class MainForm
     Private ReadOnly _vendorLabel As Label
     Private ReadOnly _qrPreviewLabel As Label
     Private ReadOnly _serialBox As TextBox
+    Private ReadOnly _markButton As Button
     Private ReadOnly _statusLabel As Label
     Private ReadOnly _loggedInLabel As Label
+    Private ReadOnly _accessButton As Button
     Private ReadOnly _setterPanel As Panel
     Private ReadOnly _partsCombo As ComboBox
     Private ReadOnly _partNumberBox As TextBox
@@ -77,19 +79,19 @@ Public Class MainForm
         _qrPreviewLabel = New Label With {.Location = New Point(20, 168), .Size = New Size(360, 62), .BorderStyle = BorderStyle.FixedSingle}
         Dim serialLabel = New Label With {.Text = "Heat / Lot Number", .Location = New Point(20, 246), .AutoSize = True}
         _serialBox = New TextBox With {.Location = New Point(20, 276), .Width = 260, .Font = New Font("Segoe UI", 18.0F, FontStyle.Regular, GraphicsUnit.Point), .CharacterCasing = CharacterCasing.Upper}
-        Dim markButton = New Button With {.Text = "MARK", .Location = New Point(292, 274), .Size = New Size(88, 44)}
+        _markButton = New Button With {.Text = "MARK", .Location = New Point(292, 274), .Size = New Size(88, 44)}
         _statusLabel = New Label With {.Location = New Point(20, 350), .Size = New Size(360, 80), .ForeColor = Color.DarkGreen}
         _loggedInLabel = New Label With {.Location = New Point(20, 508), .Size = New Size(220, 24)}
-        Dim setterLoginButton = New Button With {.Text = "Setter Login", .Location = New Point(252, 502), .Size = New Size(128, 34)}
+        _accessButton = New Button With {.Text = "Setter Login", .Location = New Point(252, 502), .Size = New Size(128, 34)}
 
-        AddHandler markButton.Click, AddressOf MarkButton_Click
-        AddHandler setterLoginButton.Click, AddressOf SetterLoginButton_Click
+        AddHandler _markButton.Click, AddressOf MarkButton_Click
+        AddHandler _accessButton.Click, AddressOf AccessButton_Click
         AddHandler _serialBox.KeyDown, AddressOf SerialBox_KeyDown
         AddHandler _serialBox.TextChanged, AddressOf OperatorInput_TextChanged
 
         operatorPanel.Controls.AddRange({
             header, currentPartText, _partLabel, vendorText, _vendorLabel, previewText, _qrPreviewLabel,
-            serialLabel, _serialBox, markButton, _statusLabel, _loggedInLabel, setterLoginButton
+            serialLabel, _serialBox, _markButton, _statusLabel, _loggedInLabel, _accessButton
         })
 
         _setterPanel = New Panel With {
@@ -239,14 +241,17 @@ Public Class MainForm
             _vendorLabel.Text = "-"
             _qrPreviewLabel.Text = ""
             _serialBox.Enabled = False
+            _markButton.Enabled = False
         Else
             _partLabel.Text = _activePart.PartNumber
             _vendorLabel.Text = _activePart.CustomerItemCode
             UpdateOperatorPreview()
             _serialBox.Enabled = True
+            _markButton.Enabled = _currentUser.Role = UserRole.OperatorUser
         End If
 
         _loggedInLabel.Text = $"Logged in as {_currentUser.Username}"
+        _accessButton.Text = If(_currentUser.Role = UserRole.OperatorUser, "Setter Login", "Logout")
     End Sub
 
     Private Function CurrentHeatLotPreview() As String
@@ -336,6 +341,11 @@ Public Class MainForm
     End Function
 
     Private Sub MarkButton_Click(sender As Object, e As EventArgs)
+        If _currentUser.Role <> UserRole.OperatorUser Then
+            ShowOperatorError("Logout before marking.")
+            Return
+        End If
+
         If _activePart Is Nothing Then
             ShowOperatorError("No active part is configured.")
             Return
@@ -380,7 +390,12 @@ Public Class MainForm
         UpdateOperatorPreview()
     End Sub
 
-    Private Sub SetterLoginButton_Click(sender As Object, e As EventArgs)
+    Private Sub AccessButton_Click(sender As Object, e As EventArgs)
+        If _currentUser.Role <> UserRole.OperatorUser Then
+            LogoutToOperator()
+            Return
+        End If
+
         Using login = New LoginForm(_database)
             If login.ShowDialog(Me) <> DialogResult.OK Then
                 Return
