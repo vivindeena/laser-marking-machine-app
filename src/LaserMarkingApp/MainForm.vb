@@ -76,7 +76,7 @@ Public Class MainForm
         Dim previewText = New Label With {.Text = "Engraving Preview:", .Location = New Point(20, 140), .AutoSize = True}
         _qrPreviewLabel = New Label With {.Location = New Point(20, 168), .Size = New Size(360, 62), .BorderStyle = BorderStyle.FixedSingle}
         Dim serialLabel = New Label With {.Text = "Heat / Lot Number", .Location = New Point(20, 246), .AutoSize = True}
-        _serialBox = New TextBox With {.Location = New Point(20, 276), .Width = 260, .Font = New Font("Segoe UI", 18.0F, FontStyle.Regular, GraphicsUnit.Point)}
+        _serialBox = New TextBox With {.Location = New Point(20, 276), .Width = 260, .Font = New Font("Segoe UI", 18.0F, FontStyle.Regular, GraphicsUnit.Point), .CharacterCasing = CharacterCasing.Upper}
         Dim markButton = New Button With {.Text = "MARK", .Location = New Point(292, 274), .Size = New Size(88, 44)}
         _statusLabel = New Label With {.Location = New Point(20, 350), .Size = New Size(360, 80), .ForeColor = Color.DarkGreen}
         _loggedInLabel = New Label With {.Location = New Point(20, 508), .Size = New Size(126, 24)}
@@ -252,7 +252,7 @@ Public Class MainForm
     End Sub
 
     Private Function CurrentHeatLotPreview() As String
-        Dim heatLot = _serialBox.Text.Trim()
+        Dim heatLot = _serialBox.Text.Trim().ToUpperInvariant()
         If String.IsNullOrWhiteSpace(heatLot) Then
             Return "26-4B-21"
         End If
@@ -343,7 +343,7 @@ Public Class MainForm
             Return
         End If
 
-        Dim heatLotNumber = _serialBox.Text.Trim()
+        Dim heatLotNumber = _serialBox.Text.Trim().ToUpperInvariant()
         If String.IsNullOrWhiteSpace(heatLotNumber) Then
             ShowOperatorError("Heat / lot number is required.")
             _serialBox.SelectAll()
