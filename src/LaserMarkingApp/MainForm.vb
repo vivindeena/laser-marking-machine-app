@@ -1,4 +1,5 @@
 Imports System
+Imports System.Collections.Generic
 Imports System.Diagnostics
 Imports System.Drawing
 Imports System.IO
@@ -14,8 +15,10 @@ Public Class MainForm
     Private _activePart As PartRecord
     Private _currentUser As UserRecord = New UserRecord With {.Username = "operator", .Role = UserRole.OperatorUser}
     Private _lastActivity As DateTime = DateTime.Now
+    Private _exitAuthorized As Boolean = False
 
     Private ReadOnly _activityTimer As Timer
+    Private ReadOnly _contentPanel As Panel
     Private ReadOnly _partLabel As Label
     Private ReadOnly _vendorLabel As Label
     Private ReadOnly _qrPreviewLabel As Label
@@ -36,6 +39,11 @@ Public Class MainForm
     Private ReadOnly _serialRegexBox As TextBox
     Private ReadOnly _externalCommandBox As TextBox
     Private ReadOnly _setterStatusLabel As Label
+    Private ReadOnly _baseBounds As New Dictionary(Of Control, Rectangle)()
+    Private ReadOnly _baseFontSizes As New Dictionary(Of Control, Single)()
+
+    Private Const DesignWidth As Integer = 980
+    Private Const DesignHeight As Integer = 640
 
     Public Sub New(database As DatabaseService)
         _database = database
@@ -48,9 +56,10 @@ Public Class MainForm
         WindowState = FormWindowState.Maximized
         TopMost = True
         MinimumSize = New Size(980, 640)
-        ClientSize = New Size(980, 640)
+        ClientSize = New Size(DesignWidth, DesignHeight)
         Font = New Font("Segoe UI", 10.0F, FontStyle.Regular, GraphicsUnit.Point)
 
+        _contentPanel = New Panel With {.Location = New Point(0, 0), .Size = New Size(DesignWidth, DesignHeight)}
         Dim operatorPanel = New Panel With {.Location = New Point(24, 24), .Size = New Size(420, 560), .BorderStyle = BorderStyle.FixedSingle}
         Dim header = New Label With {.Text = "OPERATOR", .Font = New Font(Font, FontStyle.Bold), .Location = New Point(20, 18), .AutoSize = True}
         Dim currentPartText = New Label With {.Text = "Current Part:", .Location = New Point(20, 68), .AutoSize = True}
@@ -63,17 +72,19 @@ Public Class MainForm
         _serialBox = New TextBox With {.Location = New Point(20, 276), .Width = 260, .Font = New Font("Segoe UI", 18.0F, FontStyle.Regular, GraphicsUnit.Point)}
         Dim markButton = New Button With {.Text = "MARK", .Location = New Point(292, 274), .Size = New Size(88, 44)}
         _statusLabel = New Label With {.Location = New Point(20, 350), .Size = New Size(360, 80), .ForeColor = Color.DarkGreen}
-        _loggedInLabel = New Label With {.Location = New Point(20, 508), .Size = New Size(220, 24)}
+        _loggedInLabel = New Label With {.Location = New Point(20, 508), .Size = New Size(126, 24)}
+        Dim exitButton = New Button With {.Text = "Exit", .Location = New Point(154, 502), .Size = New Size(86, 34)}
         Dim setterLoginButton = New Button With {.Text = "Setter Login", .Location = New Point(252, 502), .Size = New Size(128, 34)}
 
         AddHandler markButton.Click, AddressOf MarkButton_Click
+        AddHandler exitButton.Click, Sub() Close()
         AddHandler setterLoginButton.Click, AddressOf SetterLoginButton_Click
         AddHandler _serialBox.KeyDown, AddressOf SerialBox_KeyDown
         AddHandler _serialBox.TextChanged, AddressOf OperatorInput_TextChanged
 
         operatorPanel.Controls.AddRange({
             header, currentPartText, _partLabel, vendorText, _vendorLabel, previewText, _qrPreviewLabel,
-            serialLabel, _serialBox, markButton, _statusLabel, _loggedInLabel, setterLoginButton
+            serialLabel, _serialBox, markButton, _statusLabel, _loggedInLabel, exitButton, setterLoginButton
         })
 
         _setterPanel = New Panel With {.Location = New Point(468, 24), .Size = New Size(488, 560), .BorderStyle = BorderStyle.FixedSingle, .Enabled = False}
@@ -93,7 +104,7 @@ Public Class MainForm
         _templateBox = AddLabeledTextBox(_setterPanel, "Template", 332)
         _outputPathBox = AddLabeledTextBox(_setterPanel, "QR Output", 370)
         _templateDirectoryBox = AddLabeledTextBox(_setterPanel, "Active Folder", 408)
-        _serialRegexBox = AddLabeledTextBox(_setterPanel, "Serial Regex", 446)
+        _serialRegexBox = AddLabeledTextBox(_setterPanel, "Heat/Lot Rule", 446)
         _externalCommandBox = AddLabeledTextBox(_setterPanel, "Command", 484)
         _setterStatusLabel = New Label With {.Location = New Point(94, 522), .Size = New Size(220, 24), .ForeColor = Color.DarkGreen}
 
@@ -121,11 +132,16 @@ Public Class MainForm
             browseButton, usersButton, saveButton, setActiveButton, _setterStatusLabel
         })
 
-        Controls.AddRange({operatorPanel, _setterPanel})
+        _contentPanel.Controls.AddRange({operatorPanel, _setterPanel})
+        Controls.Add(_contentPanel)
 
         AddHandler MouseMove, AddressOf AnyActivity
         AddHandler KeyDown, AddressOf AnyKeyActivity
+        AddHandler FormClosing, AddressOf MainForm_FormClosing
+        AddHandler Resize, AddressOf MainForm_Resize
         WireActivityHandlers(Me)
+        CaptureBaseLayout(_contentPanel)
+        ApplyFullscreenLayout()
 
         _activityTimer = New Timer With {.Interval = 1000}
         AddHandler _activityTimer.Tick, AddressOf ActivityTimer_Tick
@@ -133,6 +149,57 @@ Public Class MainForm
 
         RefreshAll()
         _serialBox.Focus()
+    End Sub
+
+    Private Sub CaptureBaseLayout(parent As Control)
+        For Each child As Control In parent.Controls
+            _baseBounds(child) = child.Bounds
+            _baseFontSizes(child) = child.Font.Size
+            If child.HasChildren Then
+                CaptureBaseLayout(child)
+            End If
+        Next
+    End Sub
+
+    Private Sub MainForm_Resize(sender As Object, e As EventArgs)
+        ApplyFullscreenLayout()
+    End Sub
+
+    Private Sub ApplyFullscreenLayout()
+        If _contentPanel Is Nothing OrElse _baseBounds.Count = 0 OrElse ClientSize.Width <= 0 OrElse ClientSize.Height <= 0 Then
+            Return
+        End If
+
+        Dim scale = Math.Min(ClientSize.Width / CSng(DesignWidth), ClientSize.Height / CSng(DesignHeight))
+        scale = Math.Max(1.0F, scale)
+
+        Dim scaledWidth = CInt(Math.Round(DesignWidth * scale))
+        Dim scaledHeight = CInt(Math.Round(DesignHeight * scale))
+        _contentPanel.Bounds = New Rectangle(
+            Math.Max(0, (ClientSize.Width - scaledWidth) \ 2),
+            Math.Max(0, (ClientSize.Height - scaledHeight) \ 2),
+            scaledWidth,
+            scaledHeight)
+
+        ApplyScaledLayout(_contentPanel, scale)
+    End Sub
+
+    Private Sub ApplyScaledLayout(parent As Control, scale As Single)
+        For Each child As Control In parent.Controls
+            Dim originalBounds = _baseBounds(child)
+            child.Bounds = New Rectangle(
+                CInt(Math.Round(originalBounds.X * scale)),
+                CInt(Math.Round(originalBounds.Y * scale)),
+                CInt(Math.Round(originalBounds.Width * scale)),
+                CInt(Math.Round(originalBounds.Height * scale)))
+
+            Dim originalFontSize = _baseFontSizes(child)
+            child.Font = New Font(child.Font.FontFamily, originalFontSize * scale, child.Font.Style, child.Font.Unit)
+
+            If child.HasChildren Then
+                ApplyScaledLayout(child, scale)
+            End If
+        Next
     End Sub
 
     Private Function AddLabeledTextBox(parent As Control, labelText As String, y As Integer) As TextBox
@@ -437,6 +504,25 @@ Public Class MainForm
                 WireActivityHandlers(child)
             End If
         Next
+    End Sub
+
+    Private Sub MainForm_FormClosing(sender As Object, e As FormClosingEventArgs)
+        If _exitAuthorized Then
+            Return
+        End If
+
+        Dim defaultUsername = If(_currentUser.Role = UserRole.Setter OrElse _currentUser.Role = UserRole.Admin, _currentUser.Username, "setter")
+        Using login = New LoginForm(_database, "Confirm Exit", defaultUsername)
+            If login.ShowDialog(Me) = DialogResult.OK Then
+                _exitAuthorized = True
+                Return
+            End If
+        End Using
+
+        e.Cancel = True
+        _statusLabel.ForeColor = Color.DarkRed
+        _statusLabel.Text = "Exit cancelled. Setter or admin password is required."
+        _serialBox.Focus()
     End Sub
 
     Private Sub ShowOperatorError(message As String)

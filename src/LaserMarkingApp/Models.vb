@@ -46,6 +46,6 @@ Public Class AppSettingsRecord
     Public Property QrOutputPath As String = "C:\Laser\QRDATA.TXT"
     Public Property ActiveTemplateDirectory As String = "C:\Laser\ActiveTemplate"
     Public Property AutoLogoutMinutes As Integer = 2
-    Public Property SerialRegex As String = "^\d{6}$"
+    Public Property SerialRegex As String = ""
     Public Property ExternalCommand As String = ""
 End Class

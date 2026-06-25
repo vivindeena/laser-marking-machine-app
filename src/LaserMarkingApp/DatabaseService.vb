@@ -469,7 +469,9 @@ ON CONFLICT(Key) DO UPDATE SET Value = excluded.Value;"
         SaveSettingIfMissing(connection, "QrOutputPath", "C:\Laser\QRDATA.TXT")
         SaveSettingIfMissing(connection, "ActiveTemplateDirectory", "C:\Laser\ActiveTemplate")
         SaveSettingIfMissing(connection, "AutoLogoutMinutes", "2")
-        SaveSettingIfMissing(connection, "SerialRegex", "^\d{6}$")
+        SaveSettingIfMissing(connection, "SerialRegex", "")
+        UpdateSettingValue(connection, "SerialRegex", "^\d{6}$", "")
+        UpdateSettingValue(connection, "SerialRegex", "^\d{2}-[A-Z]\d-\d{4}$", "")
         SaveSettingIfMissing(connection, "ExternalCommand", "")
         SaveSettingIfMissing(connection, "NextSerialNumber", "2498")
     End Sub
@@ -515,6 +517,8 @@ ON CONFLICT(PartNumber) DO UPDATE SET
             End Using
         Next
 
+        MigrateLegacyDemoPart(connection)
+
         Using activeCommand = connection.CreateCommand()
             activeCommand.CommandText = "SELECT COUNT(1) FROM Parts WHERE IsActive = 1;"
             If Convert.ToInt32(activeCommand.ExecuteScalar()) = 0 Then
@@ -523,6 +527,31 @@ ON CONFLICT(PartNumber) DO UPDATE SET
                     setActiveCommand.ExecuteNonQuery()
                 End Using
             End If
+        End Using
+    End Sub
+
+    Private Shared Sub MigrateLegacyDemoPart(connection As SqliteConnection)
+        Using activeCommand = connection.CreateCommand()
+            activeCommand.CommandText = "SELECT COUNT(1) FROM Parts WHERE PartNumber = 'ABC123' AND IsActive = 1;"
+            If Convert.ToInt32(activeCommand.ExecuteScalar()) > 0 Then
+                Using setActiveCommand = connection.CreateCommand()
+                    setActiveCommand.CommandText = "
+UPDATE Parts SET IsActive = 0;
+UPDATE Parts SET IsActive = 1 WHERE PartNumber = 'B3F00401';"
+                    setActiveCommand.ExecuteNonQuery()
+                End Using
+            End If
+        End Using
+
+        Using deleteCommand = connection.CreateCommand()
+            deleteCommand.CommandText = "
+DELETE FROM Parts
+WHERE PartNumber = 'ABC123'
+  AND VendorCode = 'V001'
+  AND CustomerCode = 'C123'
+  AND QRFormat = '{VendorCode}|{PartNumber}|{Serial}'
+  AND NOT EXISTS (SELECT 1 FROM MarkLog WHERE PartNumber = 'ABC123');"
+            deleteCommand.ExecuteNonQuery()
         End Using
     End Sub
 
@@ -546,6 +575,20 @@ VALUES ($key, $value)
 ON CONFLICT(Key) DO NOTHING;"
             command.Parameters.AddWithValue("$key", key)
             command.Parameters.AddWithValue("$value", value)
+            command.ExecuteNonQuery()
+        End Using
+    End Sub
+
+    Private Shared Sub UpdateSettingValue(connection As SqliteConnection, key As String, oldValue As String, newValue As String)
+        Using command = connection.CreateCommand()
+            command.CommandText = "
+UPDATE Settings
+SET Value = $newValue
+WHERE Key = $key
+  AND Value = $oldValue;"
+            command.Parameters.AddWithValue("$key", key)
+            command.Parameters.AddWithValue("$oldValue", oldValue)
+            command.Parameters.AddWithValue("$newValue", newValue)
             command.ExecuteNonQuery()
         End Using
     End Sub
