@@ -49,3 +49,23 @@ Public Class AppSettingsRecord
     Public Property SerialRegex As String = ""
     Public Property ExternalCommand As String = ""
 End Class
+
+Public Class PartSelectionLogRecord
+    Public Property Id As Integer
+    Public Property PartId As Integer
+    Public Property PartNumber As String = ""
+    Public Property SelectedBy As String = ""
+    Public Property SelectedRole As UserRole = UserRole.Setter
+    Public Property TimestampUtc As String = ""
+End Class
+
+Public Class MarkLogRecord
+    Public Property Id As Integer
+    Public Property PartNumber As String = ""
+    Public Property GeneratedSerial As Integer
+    Public Property HeatLotNumber As String = ""
+    Public Property EngravingData As String = ""
+    Public Property TimestampUtc As String = ""
+    Public Property Username As String = ""
+    Public Property Result As String = ""
+End Class

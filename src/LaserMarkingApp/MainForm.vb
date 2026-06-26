@@ -48,6 +48,7 @@ Public Class MainForm
     Private ReadOnly _saveButton As Button
     Private ReadOnly _setActiveButton As Button
     Private ReadOnly _usersButton As Button
+    Private ReadOnly _logsButton As Button
     Private ReadOnly _baseBounds As New Dictionary(Of Control, Rectangle)()
     Private ReadOnly _baseFontSizes As New Dictionary(Of Control, Single)()
 
@@ -126,6 +127,7 @@ Public Class MainForm
         _browseButton = New Button With {.Text = "...", .Location = New Point(430, 356), .Size = New Size(34, 28)}
         _usersButton = New Button With {.Text = "Users", .Location = New Point(20, 544), .Size = New Size(68, 30)}
         _deletePartButton = New Button With {.Text = "Delete", .Location = New Point(96, 544), .Size = New Size(68, 30)}
+        _logsButton = New Button With {.Text = "Logs", .Location = New Point(172, 544), .Size = New Size(68, 30)}
         _saveButton = New Button With {.Text = "Save", .Location = New Point(282, 544), .Size = New Size(58, 30)}
         _setActiveButton = New Button With {.Text = "Set Active", .Location = New Point(348, 544), .Size = New Size(84, 30)}
 
@@ -134,6 +136,7 @@ Public Class MainForm
         AddHandler loadPartButton.Click, AddressOf LoadPartButton_Click
         AddHandler _browseButton.Click, AddressOf BrowseButton_Click
         AddHandler _usersButton.Click, AddressOf UsersButton_Click
+        AddHandler _logsButton.Click, AddressOf LogsButton_Click
         AddHandler _deletePartButton.Click, AddressOf DeletePartButton_Click
         AddHandler _saveButton.Click, AddressOf SaveButton_Click
         AddHandler _setActiveButton.Click, AddressOf SetActiveButton_Click
@@ -146,7 +149,7 @@ Public Class MainForm
 
         _setterPanel.Controls.AddRange({
             setterHeader, logoutButton, partSelectLabel, _partsCombo, _newPartButton, loadPartButton,
-            _setterPreviewLabel, _browseButton, _usersButton, _deletePartButton, _saveButton, _setActiveButton, _setterStatusLabel
+            _setterPreviewLabel, _browseButton, _usersButton, _deletePartButton, _logsButton, _saveButton, _setActiveButton, _setterStatusLabel
         })
 
         _contentPanel.Controls.AddRange({operatorPanel, _setterPanel})
@@ -421,6 +424,7 @@ Public Class MainForm
         _browseButton.Enabled = isAdmin
         _saveButton.Enabled = isAdmin
         _usersButton.Enabled = isAdmin
+        _logsButton.Enabled = isAdmin
     End Sub
 
     Private Function GetAdminOnlyTextBoxes() As IEnumerable(Of TextBox)
@@ -497,6 +501,16 @@ Public Class MainForm
         End Using
     End Sub
 
+    Private Sub LogsButton_Click(sender As Object, e As EventArgs)
+        If Not RequireAdminAction() Then
+            Return
+        End If
+
+        Using form = New ProductionLogsForm(_database)
+            form.ShowDialog(Me)
+        End Using
+    End Sub
+
     Private Sub SaveButton_Click(sender As Object, e As EventArgs)
         If Not RequireAdminAction() Then
             Return
@@ -560,7 +574,7 @@ Public Class MainForm
             End If
 
             CopyTemplateToActiveFolder(part.TemplateFile, _templateDirectoryBox.Text.Trim())
-            _database.SetActivePart(savedId)
+            _database.SetActivePart(savedId, _currentUser)
             If _currentUser.Role = UserRole.Admin Then
                 _settings = ReadSettingsFromFields()
                 _database.SaveSettings(_settings)

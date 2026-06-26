@@ -64,6 +64,15 @@ CREATE TABLE IF NOT EXISTS MarkLog (
     Result TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS PartSelectionLog (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    PartId INTEGER NOT NULL,
+    PartNumber TEXT NOT NULL,
+    SelectedBy TEXT NOT NULL,
+    SelectedRole INTEGER NOT NULL,
+    TimestampUtc TEXT NOT NULL
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS UX_MarkLog_Part_Serial
 ON MarkLog (PartNumber, SerialNumber);
 ")
@@ -183,9 +192,27 @@ SELECT last_insert_rowid();"
         End Using
     End Function
 
-    Public Sub SetActivePart(partId As Integer)
+    Public Sub SetActivePart(partId As Integer, selectedBy As UserRecord)
+        If selectedBy Is Nothing Then
+            Throw New ArgumentNullException(NameOf(selectedBy))
+        End If
+
         Using connection = OpenConnection()
             Using transaction = connection.BeginTransaction()
+                Dim partNumber As String = Nothing
+
+                Using partCommand = connection.CreateCommand()
+                    partCommand.Transaction = transaction
+                    partCommand.CommandText = "SELECT PartNumber FROM Parts WHERE Id = $id LIMIT 1;"
+                    partCommand.Parameters.AddWithValue("$id", partId)
+                    Dim value = partCommand.ExecuteScalar()
+                    If value Is Nothing OrElse value Is DBNull.Value Then
+                        Throw New InvalidOperationException("Part was not found.")
+                    End If
+
+                    partNumber = Convert.ToString(value)
+                End Using
+
                 Using clearCommand = connection.CreateCommand()
                     clearCommand.Transaction = transaction
                     clearCommand.CommandText = "UPDATE Parts SET IsActive = 0;"
@@ -197,6 +224,19 @@ SELECT last_insert_rowid();"
                     setCommand.CommandText = "UPDATE Parts SET IsActive = 1 WHERE Id = $id;"
                     setCommand.Parameters.AddWithValue("$id", partId)
                     setCommand.ExecuteNonQuery()
+                End Using
+
+                Using logCommand = connection.CreateCommand()
+                    logCommand.Transaction = transaction
+                    logCommand.CommandText = "
+INSERT INTO PartSelectionLog (PartId, PartNumber, SelectedBy, SelectedRole, TimestampUtc)
+VALUES ($partId, $partNumber, $selectedBy, $selectedRole, $timestampUtc);"
+                    logCommand.Parameters.AddWithValue("$partId", partId)
+                    logCommand.Parameters.AddWithValue("$partNumber", partNumber)
+                    logCommand.Parameters.AddWithValue("$selectedBy", selectedBy.Username)
+                    logCommand.Parameters.AddWithValue("$selectedRole", CInt(selectedBy.Role))
+                    logCommand.Parameters.AddWithValue("$timestampUtc", DateTime.UtcNow.ToString("O"))
+                    logCommand.ExecuteNonQuery()
                 End Using
 
                 transaction.Commit()
@@ -393,6 +433,70 @@ VALUES ($partNumber, $serialNumber, $qrData, $timestampUtc, $username, $result);
             End Using
         End Using
     End Sub
+
+    Public Function GetPartSelectionLogs(limit As Integer) As List(Of PartSelectionLogRecord)
+        Dim logs = New List(Of PartSelectionLogRecord)()
+        Dim safeLimit = Math.Max(1, limit)
+
+        Using connection = OpenConnection()
+            Using command = connection.CreateCommand()
+                command.CommandText = "
+SELECT Id, PartId, PartNumber, SelectedBy, SelectedRole, TimestampUtc
+FROM PartSelectionLog
+ORDER BY Id DESC
+LIMIT $limit;"
+                command.Parameters.AddWithValue("$limit", safeLimit)
+
+                Using reader = command.ExecuteReader()
+                    While reader.Read()
+                        logs.Add(New PartSelectionLogRecord With {
+                            .Id = reader.GetInt32(0),
+                            .PartId = reader.GetInt32(1),
+                            .PartNumber = reader.GetString(2),
+                            .SelectedBy = reader.GetString(3),
+                            .SelectedRole = CType(reader.GetInt32(4), UserRole),
+                            .TimestampUtc = reader.GetString(5)
+                        })
+                    End While
+                End Using
+            End Using
+        End Using
+
+        Return logs
+    End Function
+
+    Public Function GetMarkLogs(limit As Integer) As List(Of MarkLogRecord)
+        Dim logs = New List(Of MarkLogRecord)()
+        Dim safeLimit = Math.Max(1, limit)
+
+        Using connection = OpenConnection()
+            Using command = connection.CreateCommand()
+                command.CommandText = "
+SELECT Id, PartNumber, GeneratedSerial, HeatLotNumber, QRData, TimestampUtc, Username, Result
+FROM MarkLog
+ORDER BY Id DESC
+LIMIT $limit;"
+                command.Parameters.AddWithValue("$limit", safeLimit)
+
+                Using reader = command.ExecuteReader()
+                    While reader.Read()
+                        logs.Add(New MarkLogRecord With {
+                            .Id = reader.GetInt32(0),
+                            .PartNumber = reader.GetString(1),
+                            .GeneratedSerial = reader.GetInt32(2),
+                            .HeatLotNumber = reader.GetString(3),
+                            .EngravingData = reader.GetString(4),
+                            .TimestampUtc = reader.GetString(5),
+                            .Username = reader.GetString(6),
+                            .Result = reader.GetString(7)
+                        })
+                    End While
+                End Using
+            End Using
+        End Using
+
+        Return logs
+    End Function
 
     Private Function OpenConnection() As SqliteConnection
         Dim connection = New SqliteConnection(_connectionString)
