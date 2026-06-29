@@ -62,7 +62,7 @@ End Class
 Public Class MarkLogRecord
     Public Property Id As Integer
     Public Property PartNumber As String = ""
-    Public Property GeneratedSerial As Integer
+    Public Property GeneratedSerial As Integer?
     Public Property HeatLotNumber As String = ""
     Public Property EngravingData As String = ""
     Public Property TimestampUtc As String = ""

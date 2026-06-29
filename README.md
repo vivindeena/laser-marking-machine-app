@@ -50,6 +50,7 @@ Each artifact contains the architecture-specific single executable. Production d
 ## Default Paths
 
 - QR output: `C:\Laser\QRDATA.TXT`
+- EZD template source folder: `D:\QUALITY-3`
 - Active template folder: `C:\Laser\ActiveTemplate`
 - Database: `%LOCALAPPDATA%\LaserMarkingApp\laser_marking.db`
 

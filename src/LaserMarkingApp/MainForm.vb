@@ -506,6 +506,9 @@ Public Class MainForm
         Using dialog = New OpenFileDialog()
             dialog.Title = "Select EZCAD template"
             dialog.Filter = "EZCAD templates (*.ezd)|*.ezd|All files (*.*)|*.*"
+            If Directory.Exists("D:\QUALITY-3") Then
+                dialog.InitialDirectory = "D:\QUALITY-3"
+            End If
             If dialog.ShowDialog(Me) = DialogResult.OK Then
                 _templateBox.Text = dialog.FileName
             End If

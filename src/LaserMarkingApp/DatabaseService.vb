@@ -472,7 +472,14 @@ LIMIT $limit;"
         Using connection = OpenConnection()
             Using command = connection.CreateCommand()
                 command.CommandText = "
-SELECT Id, PartNumber, GeneratedSerial, HeatLotNumber, QRData, TimestampUtc, Username, Result
+SELECT Id,
+       PartNumber,
+       CASE WHEN GeneratedSerial = 0 THEN NULL ELSE GeneratedSerial END AS GeneratedSerial,
+       CASE WHEN GeneratedSerial = 0 AND HeatLotNumber = '' THEN NULL ELSE HeatLotNumber END AS HeatLotNumber,
+       QRData,
+       TimestampUtc,
+       Username,
+       Result
 FROM MarkLog
 ORDER BY Id DESC
 LIMIT $limit;"
@@ -480,16 +487,8 @@ LIMIT $limit;"
 
                 Using reader = command.ExecuteReader()
                     While reader.Read()
-                        Dim generatedSerial = reader.GetInt32(2)
-                        Dim heatLotNumber = reader.GetString(3)
-
-                        ' Legacy rows: default values indicate missing data
-                        If generatedSerial = 0 Then
-                            generatedSerial = 0 ' Keep as 0 to indicate legacy/unknown
-                        End If
-                        If String.IsNullOrEmpty(heatLotNumber) Then
-                            heatLotNumber = "" ' Keep empty to indicate legacy/unknown
-                        End If
+                        Dim generatedSerial As Integer? = If(reader.IsDBNull(2), CType(Nothing, Integer?), reader.GetInt32(2))
+                        Dim heatLotNumber = If(reader.IsDBNull(3), "", reader.GetString(3))
 
                         logs.Add(New MarkLogRecord With {
                             .Id = reader.GetInt32(0),
@@ -636,19 +635,19 @@ ON CONFLICT(Key) DO UPDATE SET Value = excluded.Value;"
 
     Private Shared Sub SeedWorkbookParts(connection As SqliteConnection)
         Dim seeds = {
-            New PartRecord With {.PartNumber = "B3F00401", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#.3", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F00401.ezd", .IsActive = True},
-            New PartRecord With {.PartNumber = "B3F02001", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#.0", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F02001.ezd"},
-            New PartRecord With {.PartNumber = "B3F02301", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#.0", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F02301.ezd"},
-            New PartRecord With {.PartNumber = "B3F03901", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "B", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F03901.ezd"},
-            New PartRecord With {.PartNumber = "B3F07601", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#1", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F07601.ezd"},
-            New PartRecord With {.PartNumber = "B3F11901", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#1", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F11901.ezd"},
-            New PartRecord With {.PartNumber = "B3F13201", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F13201.ezd"},
-            New PartRecord With {.PartNumber = "B3F15301", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F15301.ezd"},
-            New PartRecord With {.PartNumber = "B3F16301", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F16301.ezd"},
-            New PartRecord With {.PartNumber = "B3F16401", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F16401.ezd"},
-            New PartRecord With {.PartNumber = "B3F18701", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "K", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F18701.ezd"},
-            New PartRecord With {.PartNumber = "B3F19901", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B3F19901.ezd"},
-            New PartRecord With {.PartNumber = "B8761001", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "K", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "C:\Laser\Templates\B8761001.ezd"}
+            New PartRecord With {.PartNumber = "B3F00401", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#.3", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F00401 COLOUR NEW FW - Copy - Copy.ezd", .IsActive = True},
+            New PartRecord With {.PartNumber = "B3F02001", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#.0", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F02001 COLOUR NEW FW.ezd"},
+            New PartRecord With {.PartNumber = "B3F02301", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#.0", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F02301 COLOUR NEW FW.ezd"},
+            New PartRecord With {.PartNumber = "B3F03901", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "B", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F03901 COLOUR NEW FW.ezd"},
+            New PartRecord With {.PartNumber = "B3F07601", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#1", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F07601 COLOUR NEW FW.ezd"},
+            New PartRecord With {.PartNumber = "B3F11901", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#1", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F11901 COLOUR NEW FW.ezd"},
+            New PartRecord With {.PartNumber = "B3F13201", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F13201 COLOUR NEW FW - Copy.ezd"},
+            New PartRecord With {.PartNumber = "B3F15301", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F15301 COLOUR NEW FW.ezd"},
+            New PartRecord With {.PartNumber = "B3F16301", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F16301 COLOUR NEW FW - Copy.ezd"},
+            New PartRecord With {.PartNumber = "B3F16401", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F16401 COLOUR NEW FW.ezd"},
+            New PartRecord With {.PartNumber = "B3F18701", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "K", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F18701 COLOUR NEW FW.ezd"},
+            New PartRecord With {.PartNumber = "B3F19901", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "#", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B3F19901 COLOUR NEW FW.ezd"},
+            New PartRecord With {.PartNumber = "B8761001", .CustomerItemCode = "7201097", .Material = "FG260", .Pattern = "K", .ProductName = "FLYWHEEL", .SupplierName = "SREERAMENGG", .TemplateFile = "D:\QUALITY-3\B8761001 COLOUR NEW FW.ezd"}
         }
 
         For Each seed In seeds
@@ -667,6 +666,7 @@ ON CONFLICT(PartNumber) DO NOTHING;"
             End Using
         Next
 
+        MigrateSeededTemplatePaths(connection, seeds)
         MigrateLegacyDemoPart(connection)
 
         Using activeCommand = connection.CreateCommand()
@@ -678,6 +678,22 @@ ON CONFLICT(PartNumber) DO NOTHING;"
                 End Using
             End If
         End Using
+    End Sub
+
+    Private Shared Sub MigrateSeededTemplatePaths(connection As SqliteConnection, seeds As IEnumerable(Of PartRecord))
+        For Each seed In seeds
+            Using command = connection.CreateCommand()
+                command.CommandText = "
+UPDATE Parts
+SET TemplateFile = $newTemplateFile
+WHERE PartNumber = $partNumber
+  AND TemplateFile = $oldTemplateFile;"
+                command.Parameters.AddWithValue("$newTemplateFile", seed.TemplateFile)
+                command.Parameters.AddWithValue("$partNumber", seed.PartNumber)
+                command.Parameters.AddWithValue("$oldTemplateFile", $"C:\Laser\Templates\{seed.PartNumber}.ezd")
+                command.ExecuteNonQuery()
+            End Using
+        Next
     End Sub
 
     Private Shared Sub MigrateLegacyDemoPart(connection As SqliteConnection)

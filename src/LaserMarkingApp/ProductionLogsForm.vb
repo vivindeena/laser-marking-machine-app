@@ -114,7 +114,7 @@ Public Class ProductionLogsForm
             _markLogGrid.Rows.Add(
                 FormatTimestamp(log.TimestampUtc),
                 log.PartNumber,
-                log.GeneratedSerial.ToString(CultureInfo.InvariantCulture),
+                FormatGeneratedSerial(log.GeneratedSerial),
                 log.HeatLotNumber,
                 log.EngravingData,
                 log.Username,
@@ -165,7 +165,7 @@ Public Class ProductionLogsForm
             AppendCsvLine(builder, {
                 FormatTimestamp(log.TimestampUtc),
                 log.PartNumber,
-                log.GeneratedSerial.ToString(CultureInfo.InvariantCulture),
+                FormatGeneratedSerial(log.GeneratedSerial),
                 log.HeatLotNumber,
                 log.EngravingData,
                 log.Username,
@@ -174,6 +174,14 @@ Public Class ProductionLogsForm
         Next
 
         Return builder.ToString()
+    End Function
+
+    Private Shared Function FormatGeneratedSerial(generatedSerial As Integer?) As String
+        If generatedSerial.HasValue Then
+            Return generatedSerial.Value.ToString(CultureInfo.InvariantCulture)
+        End If
+
+        Return ""
     End Function
 
     Private Shared Sub AppendCsvLine(builder As StringBuilder, values As IEnumerable(Of String))
