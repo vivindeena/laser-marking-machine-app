@@ -676,7 +676,7 @@ Public Class MainForm
             Return operatorUser
         End If
 
-        Return New UserRecord With {.Username = "operator", .Role = UserRole.OperatorUser}
+        Return _database.SaveUser("operator", "operator123", UserRole.OperatorUser, returnUser:=True)
     End Function
 
     Private Sub AnyActivity(sender As Object, e As MouseEventArgs)

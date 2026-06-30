@@ -87,6 +87,7 @@ ON MarkLog (PartNumber, SerialNumber);
             EnsureColumn(connection, "Parts", "ProductName", "TEXT NOT NULL DEFAULT 'FLYWHEEL'")
             EnsureColumn(connection, "Parts", "SupplierName", "TEXT NOT NULL DEFAULT 'SREERAMENGG'")
             EnsureColumn(connection, "Users", "IsDeleted", "INTEGER NOT NULL DEFAULT 0")
+            EnsureColumn(connection, "MarkLog", "Result", "TEXT NOT NULL DEFAULT 'Legacy'")
             EnsureColumn(connection, "MarkLog", "HeatLotNumber", "TEXT NOT NULL DEFAULT ''")
             EnsureColumn(connection, "MarkLog", "GeneratedSerial", "INTEGER NOT NULL DEFAULT 0")
             EnsureColumn(connection, "MarkLog", "UserId", "INTEGER")
@@ -368,6 +369,11 @@ ON CONFLICT(Username) DO UPDATE SET
             End Using
         End Using
     End Sub
+
+    Public Function SaveUser(username As String, password As String, role As UserRole, returnUser As Boolean) As UserRecord
+        SaveUser(username, password, role)
+        Return FindUser(username)
+    End Function
 
     Public Sub SoftDeleteUser(userId As Integer, currentUserId As Integer)
         If userId <= 0 Then
